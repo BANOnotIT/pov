@@ -8,8 +8,8 @@
 #define start_flashes 1                 // проверка цветов при запуске (1 - включить, 0 - выключить)
 
 // ---- \настройки/ ----
+#include <FastLED.h>
 #include <SoftwareSerial.h>
-#include "FastLED/FastLED.h"
 
 String strData = "";
 
