@@ -1,7 +1,9 @@
 // ----- настройки -----
 
 #define DI_PIN 7                        // пин подключения ленты
-#define NUM_LEDS 10                     // количество светодиодов в ленте
+#define NUM_LEDS 14                     // количество светодиодов в ленте
+
+#define ROUND_TIME 300                  // время одного полного оборота оси на полной скорости
 
 #define MOTOR_PIN 3                     // пин подключения потора
 
@@ -10,6 +12,12 @@
 // ---- \настройки/ ----
 #include <FastLED.h>
 #include <SoftwareSerial.h>
+
+
+char leds_mem[NUM_LEDS];
+
+bool leds_on = false;
+bool showing_half = false;
 
 String strData = "";
 
@@ -27,7 +35,15 @@ void setup() {
         LEDS.showColor(CRGB(0, 0, 255));
         delay(500);
         LEDS.showColor(CRGB(0, 0, 0));
+
+        for (char i = 0; i < NUM_LEDS; i++) {
+            leds[i].setHue(0); // показываем красный
+            FastLED.show(); // записываем на ленточку
+            delay(200);
+            LEDS.showColor(CRGB(0, 0, 0)); // вырубаем все диоды
+        }
     }
+
 
     Serial.begin(9600);
 
@@ -38,60 +54,93 @@ void setup() {
 }
 
 void loop() {
-    long availableBytes;
 
-    for (;;) {         // главный подцикл, ожидает данные в Serial и отрабатывает кнопку
-        availableBytes = Serial.available();         // считаем, сколько байт в буфере
-        if (availableBytes > 0) {      // если есть что то на вход
-            delay(200);                                // ждём, пока придут остальные символы
-            availableBytes = Serial.available();       // обновляем число байт в буфере
-            strData = "";                              // очистить строку
-            for (int i = 0; i < availableBytes; i++) {
-                char newByte = Serial.read();
-                strData += newByte;                      // забиваем строку принятыми данными
+    long availableBytes = Serial.available(); // обновляем число байт в буфере serial
+
+    if (availableBytes == 1) {
+        delay(10);
+        if (Serial.available() == 1) {
+            char cmd = Serial.read();
+
+            if (cmd == '^')
+                Start();
+
+            else if (cmd == 'V') {
+                LEDS.showColor(CRGB::Black); // убираем полностью свет
+                analogWrite(MOTOR_PIN, 0); // отключаем мотор
+                leds_on = false;
             }
-            break;                                     // выходим из цикла
         }
     }
 
-    if (strData.equals("stop")) {
-        LEDS.showColor(CRGB::Black); // убираем полностью свет
-        analogWrite(MOTOR_PIN, 0); // отключаем мотор
-    } else if (strData.equals("start")) {
+    if (availableBytes == NUM_LEDS) {
 
-//            показываем радугу на первых 7 лампочках
+        for (char i = 0; i < NUM_LEDS; i++) {
+            char sym = Serial.read();
 
-        leds[6].setHue(0); // каждый
-        leds[5].setHue(28); // охотник
-        leds[4].setHue(43); // желает
-        leds[3].setHue(85); // знать
-        leds[2].setHue(128); // где
-        leds[1].setHue(170); // сидит
-        leds[0].setHue(213); // фазан
+//            magic
+            sym = sym > 47 && sym < 58 ? // numeric char
+                  sym - 48 :
+                  sym > 96 && sym < 103 ? // a-f char
+                  sym - 87 :
+                  0;
 
-        FastLED.show(); // записываем на ленточку
 
-//            "да будет движение" - сказал Ньютон и включил моторчик
-        analogWrite(MOTOR_PIN, 1023);
-    } else {
-//            если количество символов не соответствует количеству лампочек
-        if (strData.length() != NUM_LEDS)
-            return;
+            leds_mem[i] = sym << 4 & sym;
+        }
 
-        for (int i = 0; i < NUM_LEDS; i++) {
+        showing_half = false;
+    }
 
-//                f0a => 255, 0, 170 # 3 лампочки, одна гореть будет фиолетовеньким, другая красиньким, третья каким-то...
-//                используем почти безопасные цвета, но каждый пиксель кодируем одним символом
 
-            unsigned long number = strtoul(strData[i], NULL, 16);
-            long color = number << 4 & number;
+    if (leds_on) {
 
-            leds[i].setHue(color);       // назначаем цвет
+        bool visible_half = millis() % ROUND_TIME > ROUND_TIME / 2;
 
+        if (visible_half && !showing_half) {
+            ShowColorsFromMem();
+            showing_half = true;
+        } else if (!visible_half && showing_half) {
+            FastLED.showColor(CRGB(0, 0, 0));
+            showing_half = false;
         }
 
 
-        FastLED.show();                 // записываем в ленточку
-
     }
+
+}
+
+void Start() {
+// показываем радугу на первых 14 лампочках
+//    leds[13].setHue(0); // каждый
+//    leds[12].setHue(0); // каждый
+//    leds[11].setHue(28); // охотник
+//    leds[10].setHue(28); // охотник
+//    leds[9].setHue(43); // желает
+//    leds[8].setHue(43); // желает
+//    leds[7].setHue(85); // знать
+//    leds[6].setHue(85); // знать
+//    leds[5].setHue(128); // где
+//    leds[4].setHue(128); // где
+//    leds[3].setHue(170); // сидит
+//    leds[2].setHue(170); // сидит
+//    leds[1].setHue(213); // фазан
+//    leds[0].setHue(213); // фазан
+
+    leds_mem = {213, 213, 170, 170, 128, 128, 85, 85, 43, 43, 28, 28, 0, 0};
+    showing_half = false;
+    leds_on = true;
+
+// "да будет движение" - сказал Ньютон и включил моторчик
+    Serial.print("Starting Motor");
+    analogWrite(MOTOR_PIN, 1023);
+}
+
+void ShowColorsFromMem() {
+
+    for (char i = 0; i < NUM_LEDS; i++)
+        leds[i].setHue(leds_mem[i]);       // назначаем цвет
+
+    FastLED.show();                 // записываем в ленточку
+
 }
