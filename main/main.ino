@@ -1,7 +1,7 @@
 // ----- настройки -----
 
 #define DI_PIN 7                        // пин подключения ленты
-#define NUM_LEDS 14                     // количество светодиодов в ленте
+#define NUM_LEDS 13                     // количество светодиодов в ленте
 
 #define ROUND_TIME 300                  // время одного полного оборота оси на полной скорости
 
@@ -26,24 +26,59 @@ CRGB leds[NUM_LEDS];  // создаём ленту
 
 void setup() {
     FastLED.addLeds<WS2812, DI_PIN, GRB>(leds, NUM_LEDS);  // инициализация светодиодов
+    FastLED.showColor(CRGB::Black);
 
     // вспышки красным синим и зелёным при запуске (можно отключить)
     if (start_flashes) {
-        LEDS.showColor(CRGB(255, 0, 0));
+        LEDS.showColor(CRGB::Red);
         delay(500);
-        LEDS.showColor(CRGB(0, 255, 0));
+        LEDS.showColor(CRGB::Green);
         delay(500);
-        LEDS.showColor(CRGB(0, 0, 255));
+        LEDS.showColor(CRGB::Blue);
         delay(500);
-        LEDS.showColor(CRGB(0, 0, 0));
+        LEDS.showColor(CRGB::Black);
+
+
+        // Тест цвета закончен
+        delay(100);
+        LEDS.showColor(CRGB::Red);
+        delay(100);
+        LEDS.showColor(CRGB::Black);
+        delay(100);
+        LEDS.showColor(CRGB::Red);
+        delay(100);
+        LEDS.showColor(CRGB::Black);
+
+        delay(200);
 
         for (char i = 0; i < NUM_LEDS; i++) {
-            leds[i].setHue(0); // показываем красный
+            leds[i] = CRGB::Red; // показываем красный
+            leds[NUM_LEDS - 1 - i] = CRGB::Green; // показываем зелёный
             FastLED.show(); // записываем на ленточку
             delay(200);
-            LEDS.showColor(CRGB(0, 0, 0)); // вырубаем все диоды
+            leds[i] = CRGB::Black; // показываем чёрный
+            leds[NUM_LEDS - 1 - i] = CRGB::Black;
+            FastLED.show(); // записываем на ленточку
+            delay(100);
+
         }
+
     }
+
+
+    // адресный тест закончен
+    delay(100);
+    LEDS.showColor(CRGB::Green);
+    delay(100);
+    LEDS.showColor(CRGB::Black);
+    delay(50);
+    LEDS.showColor(CRGB::Green);
+    delay(100);
+    LEDS.showColor(CRGB::Black);
+    delay(50);
+    LEDS.showColor(CRGB::Green);
+    delay(100);
+    LEDS.showColor(CRGB::Black);
 
     pinMode(MOTOR_PIN, OUTPUT);
 
@@ -90,7 +125,10 @@ void loop() {
         for (char i = 0; i < NUM_LEDS; i++) {
             char sym = Serial.read();
 
-//            magic
+            Serial.print(sym);
+            Serial.print(':');
+
+            //            magic
             sym = sym > 47 && sym < 58 ? // numeric char
                   sym - 48 :
                   sym > 96 && sym < 103 ? // a-f char
@@ -98,8 +136,10 @@ void loop() {
                   0;
 
 
-            leds_mem[i] = sym << 4 & sym;
+            leds_mem[i] = sym << 4 | sym;
+
         }
+        Serial.print('\n');
 
         showing_half = false;
 
@@ -110,13 +150,11 @@ void loop() {
         for (int i = 0; i < availableBytes; i++)
             Serial.read();
 
+        Serial.print("Buffer cleared (T-T)\n");
 
-
-//        clearing serial buffer
-//        for (long i = 0; i < availableBytes; i++)
-//            Serial.read();
     } else if (availableBytes > 1 && availableBytes < NUM_LEDS) {
-        Serial.print("Buf size: ");
+
+        Serial.print("BS: ");
         Serial.print(availableBytes);
         Serial.print('/');
         Serial.print(NUM_LEDS);
@@ -143,26 +181,27 @@ void loop() {
 }
 
 void Start() {
-// показываем радугу на первых 14 лампочках
-    leds[13] = 0; // каждый
-    leds[12] = 0; // каждый
-    leds[11] = 28; // охотник
-    leds[10] = 28; // охотник
-    leds[9] = 43; // желает
-    leds[8] = 43; // желает
-    leds[7] = 85; // знать
-    leds[6] = 85; // знать
-    leds[5] = 128; // где
-    leds[4] = 128; // где
-    leds[3] = 170; // сидит
-    leds[2] = 170; // сидит
-    leds[1] = 213; // фазан
-    leds[0] = 213; // фазан
+    // показываем радугу на первых 14 лампочках
+    //    leds[13] = /0; // каждый
+
+    Serial.print("Now using scheme: ");
+
+    for (char i = 0; i < NUM_LEDS; i++) {
+
+
+        char val = char(14 * i / NUM_LEDS);
+        leds_mem[NUM_LEDS - 1 - i] = val * 16;
+
+        Serial.print(char(val < 10 ? val + 48 : val + 87));
+
+    }
+    Serial.print('\n');
+
 
     showing_half = false;
     leds_on = true;
 
-// "да будет движение" - сказал Ньютон и включил моторчик
+    // "да будет движение" - сказал Ньютон и включил моторчик
     analogWrite(MOTOR_PIN, 255);
 }
 
