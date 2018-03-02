@@ -7,7 +7,7 @@
 
 #define MOTOR_PIN 3                     // пин подключения мотора
 
-#define start_flashes 1                 // проверка цветов при запуске (1 - включить, 0 - выключить)
+#define start_flashes 0                 // проверка цветов при запуске (1 - включить, 0 - выключить)
 
 // ---- \настройки/ ----
 #include <FastLED.h>
@@ -89,6 +89,9 @@ void setup() {
 
     Serial.print("Hi!!! (-_-)\n");
     Help();
+
+
+    Start();
 }
 
 void loop() {
@@ -189,10 +192,11 @@ void Start() {
     for (char i = 0; i < NUM_LEDS; i++) {
 
 
-        char val = char(14 * i / NUM_LEDS);
-        leds_mem[NUM_LEDS - 1 - i] = val * 16;
+        char val = char(14 * (NUM_LEDS - 1 - i) / NUM_LEDS);
+        leds_mem[i] = val * 16;
 
         Serial.print(char(val < 10 ? val + 48 : val + 87));
+        Serial.print(':');
 
     }
     Serial.print('\n');
